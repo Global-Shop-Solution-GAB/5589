@@ -1,0 +1,85 @@
+Program.Sub.Preflight.Start
+Variable.Global.sRptName.Declare(String)
+Variable.Global.sReportID.Declare(String)
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+
+'Program written to execute off of the Shop Floor data collection hook 15760.  The program 
+'retrieves the active employee from the SFDC then looks to build a report of all the active jobs 
+'and present them on a screen along with the part number they are making.  This was built to 
+'facilitate data entry for flex schedules when an employee is reporting off of multiple jobs.
+'For this to work the corresponding crystal report must be in the \BUSINT\CUSTOM subdirectory.
+'NOTE NOTE also set this to run on 15710 which will then set the value of the script 1 button to
+'read job/part.
+
+	v.Local.sUserID.Declare(string)
+	V.Local.sCrystalParm.Declare(string,"employee")
+	
+	'Here we will set the text on the script 1 button
+	f.Intrinsic.Control.If(v.Caller.Hook,"=",15710)
+		v.Passed.000016.Set("Job/Part")
+		f.Intrinsic.control.End
+
+	f.Intrinsic.Control.EndIf
+
+	'Here we will capture the employee ID number of the active employee
+	v.Local.sUserID.Set(v.Passed.009993)
+	f.Intrinsic.Control.If(v.Local.sUserID,">","")
+		'continue and check the jobs_in_process_g table for all the jobs an employee is working on
+	f.Intrinsic.Control.Else
+		'if no active employee is selected we will send a message, we cannot process
+		f.Intrinsic.UI.Msgbox("Selection only works with an active employee")
+		f.Intrinsic.Control.End
+
+	f.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.CallSub(getrptid)
+
+	' Call the crystal report
+	Function.Global.BI.PrintReport(v.Global.sReportID,0,V.Local.sCrystalParm,Variable.Local.sUserID,False)
+
+
+Program.Sub.Main.End
+
+Program.Sub.getrptid.Start
+
+V.Local.iRptID.Declare(Long,0)
+V.Local.sPath.Declare(String)
+V.Local.bExists.Declare(Boolean)
+
+V.Local.sTemp.Declare(String)
+
+V.Local.sRptName.Declare(String)
+V.Local.sRptName.Set("GAB_5589_Job_Part_xref.rpt")
+
+F.Global.BI.GetIDFromName(V.Local.sRptName.Trim,V.Local.iRptID)
+F.Intrinsic.Control.If(V.Local.iRptID,=,-1)
+		F.Intrinsic.String.Concat(V.Caller.BusintDir,"\Custom\",V.Local.sRptName.Trim,V.Local.sPath)
+		F.Intrinsic.File.Exists(V.Local.sPath,V.Local.bExists)
+		F.Intrinsic.Control.If(V.Local.bExists,=,False)
+			F.Intrinsic.String.Concat("Please setup ",V.Local.sRptName,". Report in Custom Reports Maintenance",V.Local.sTemp)
+			F.Intrinsic.UI.Msgbox(V.Local.sTemp)
+			F.Intrinsic.Control.ExitSub
+		F.Intrinsic.Control.EndIf
+		F.Global.BI.InitializeReport(V.Local.sRptName.Trim,V.Local.sPath,V.Local.iRptID)
+		F.Intrinsic.Variable.AddRV("iRptID",V.Local.iRptID)
+		F.Intrinsic.Control.If(V.Local.iRptID,=,-1)
+			F.Intrinsic.String.Concat("Please setup ",V.Local.sRptName,". Report in Custom Reports Maintenance",V.Local.sTemp)
+			F.Intrinsic.UI.Msgbox(V.Local.sTemp)
+			F.Intrinsic.Control.ExitSub
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Variable.AddRV("iRptID",V.Local.iRptID)
+F.Intrinsic.Control.EndIf
+
+v.Global.sReportID.Set(v.Local.iRptID)
+
+
+
+Program.Sub.getrptid.End
+
+Program.Sub.Comments.Start
+${$0$}$GuiJobPartXREF$}$SUPERVSR$}$6/25/2019 2:53:08 PM$}$False
+Program.Sub.Comments.End
